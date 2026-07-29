@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+*.dist-info/
+.eggs/
+venv/
+.venv/
+ENV/
+env/
+
+# PyInstaller
+build/
+dist/
+*.spec
+*.manifest
+*.spec.tmp
+build-cache/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Backup
+*.backup
+*.bak
+*.old
+
+# Checkpoints
+pdf_batch_add_text/.checkpoints/
+pdf_batch_add_text/.checkpoints/*.json
+
+# Logs
+*.log
+
+# Test data
+test_pdfs/
+test_out/
+test_output2/
+test_final_output/
+test_out_valid/
+test_data.xlsx
+PDF批量添加文字模板.xlsx
+output/
+
+# Exe
+PDF批量添加文字.exe
+
+# Build
+spec/
+
+# Non-project directories
+.trae/
+.reasonix/
+reasonix.toml
