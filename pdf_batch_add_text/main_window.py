@@ -753,25 +753,16 @@ class MainWindow(QMainWindow):
 
         self.status_label = QLabel(f"就绪 | {APP_NAME} v{APP_VERSION}")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet(f"color:{COLORS['text_muted']};font-size:12px;border:none;background:transparent;")
+        self.status_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.status_label.setStyleSheet(
+            f"color:{COLORS['text_muted']};font-size:13px;font-weight:600;"
+            f"border:1px solid {COLORS['border']};border-radius:8px;"
+            f"padding:4px 16px;background:{COLORS['card']};"
+        )
+        self.status_label.setToolTip("点击检查更新 | GitHub Release")
+        self.status_label.mousePressEvent = lambda e: self._check_update_now()
         ctrl_l.addWidget(self.status_label)
-
-        # 检查更新按钮
-        self.update_btn = QPushButton("🔄 检查更新")
-        self.update_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.update_btn.setFixedHeight(24)
-        self.update_btn.setFixedWidth(85)
-        self.update_btn.setStyleSheet(f"""
-            QPushButton {{
-                background:{COLORS['accent_light']}; color:{COLORS['accent']};
-                border:1px solid {COLORS['border']}; border-radius:6px;
-                padding:4px 10px; font-size:11px; font-weight:600;
-            }}
-            QPushButton:hover {{ background:{COLORS['accent']}; color:white; }}
-        """)
-        self.update_btn.clicked.connect(self._check_update_now)
-        self.update_btn.setToolTip("检查 GitHub 是否有新版本")
-        ctrl_l.addWidget(self.update_btn)
+        ctrl_l.addStretch()
 
         self.start_btn = QPushButton("开始处理")
         self.start_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -2246,17 +2237,31 @@ class MainWindow(QMainWindow):
         self.update_style_preview()
 
     def _check_update_on_startup(self):
-        """启动时在后台静默检查更新"""
-        try:
-            from .utils.auto_update import check_update_in_background
-            def on_result(has_update, latest_version, changelog, download_url):
-                if has_update and latest_version:
-                    self._show_update_notification(latest_version, changelog, download_url)
-                elif not has_update and latest_version:
-                    self.status_label.setText(f"就绪 | {APP_NAME} v{APP_VERSION} (已是最新)")
-            check_update_in_background(on_result)
-        except Exception:
-            pass  # 静默失败，不影响正常使用
+        """启动时在后台静默检查更新（安全：不弹窗，只更新状态栏）"""
+        from .utils.auto_update import check_for_update
+        import threading
+        from PyQt6.QtCore import QTimer
+
+        def _check():
+            try:
+                result = check_for_update()
+                QTimer.singleShot(0, lambda: self._on_startup_update_result(result))
+            except Exception:
+                pass
+
+        threading.Thread(target=_check, daemon=True).start()
+
+    def _on_startup_update_result(self, result):
+        """主线程：根据启动时检查结果更新状态栏"""
+        if result.get("has_update") and result.get("latest_version"):
+            self.status_label.setText(
+                f"发现新版本 v{result['latest_version']} | 点击版本号下载"
+            )
+            self.status_label.setStyleSheet(
+                f"color:{COLORS['accent']};font-size:13px;font-weight:700;"
+                f"border:1px solid {COLORS['accent']};border-radius:8px;"
+                f"padding:4px 16px;background:{COLORS['accent_light']};"
+            )
 
     def _show_update_notification(self, latest_version, changelog, download_url):
         """在状态栏显示更新通知"""
@@ -2268,43 +2273,64 @@ class MainWindow(QMainWindow):
         )
 
     def _check_update_now(self):
-        """手动检查更新（带进度提示）"""
+        """点击版本号检测更新（后台线程检查，主线程弹窗）"""
+        from PyQt6.QtCore import QTimer
+        from .utils.auto_update import check_for_update
+        import threading
+
+        self.status_label.setText("正在检查更新...")
+        self.status_label.setCursor(QCursor(Qt.CursorShape.WaitCursor))
+
+        def _check():
+            """后台线程：只做 API 请求"""
+            try:
+                result = check_for_update()
+            except Exception:
+                result = {"has_update": False, "latest_version": APP_VERSION,
+                          "changelog": "", "download_url": "", "cached": False}
+            # 用 QTimer 切回主线程处理弹窗
+            QTimer.singleShot(0, lambda: self._on_update_result(result))
+
+        thread = threading.Thread(target=_check, daemon=True)
+        thread.start()
+
+    def _on_update_result(self, result):
+        """主线程处理更新结果（安全弹窗）"""
         from PyQt6.QtWidgets import QMessageBox
         import webbrowser
 
-        self.status_label.setText("正在检查更新...")
-        self.update_btn.setEnabled(False)
-        from .utils.auto_update import check_update_in_background
+        self.status_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        has_update = result.get("has_update", False)
+        latest_version = result.get("latest_version", "")
+        changelog = result.get("changelog", "")
+        download_url = result.get("download_url", "")
 
-        def on_result(has_update, latest_version, changelog, download_url):
-            self.update_btn.setEnabled(True)
-            if has_update and latest_version:
-                self._show_update_notification(latest_version, changelog, download_url)
-                msg = QMessageBox(self)
-                msg.setWindowTitle("发现新版本")
-                msg.setIcon(QMessageBox.Icon.Information)
-                msg.setText(
-                    f"<b>新版本 v{latest_version}</b> 可用！<br>"
-                    f"当前版本：v{APP_VERSION}"
-                )
-                if changelog:
-                    preview = changelog[:300] + ("..." if len(changelog) > 300 else "")
-                    msg.setInformativeText(f"更新内容：\n{preview}")
-                download_btn = msg.addButton("下载最新版本", QMessageBox.ButtonRole.AcceptRole)
-                later_btn = msg.addButton("稍后提醒", QMessageBox.ButtonRole.RejectRole)
-                msg.setDefaultButton(download_btn)
-                msg.exec()
-                if msg.clickedButton() == download_btn:
-                    if download_url:
-                        webbrowser.open(download_url)
-                        self.status_label.setText("已打开下载页面")
-                    else:
-                        self.status_label.setText(f"就绪 | {APP_NAME} v{APP_VERSION}")
-            else:
-                self.status_label.setText(f"就绪 | {APP_NAME} v{APP_VERSION} (已是最新)")
-                QMessageBox.information(self, "检查更新",
-                    f"当前版本：v{APP_VERSION}\n已是最新版本，无需更新。")
-        check_update_in_background(on_result)
+        if has_update and latest_version:
+            self._show_update_notification(latest_version, changelog, download_url)
+            msg = QMessageBox(self)
+            msg.setWindowTitle("发现新版本")
+            msg.setIcon(QMessageBox.Icon.Information)
+            msg.setText(
+                f"<b>新版本 v{latest_version}</b> 可用！<br>"
+                f"当前版本：v{APP_VERSION}"
+            )
+            if changelog:
+                preview = changelog[:300] + ("..." if len(changelog) > 300 else "")
+                msg.setInformativeText(f"更新内容：\n{preview}")
+            download_btn = msg.addButton("下载最新版本", QMessageBox.ButtonRole.AcceptRole)
+            later_btn = msg.addButton("稍后提醒", QMessageBox.ButtonRole.RejectRole)
+            msg.setDefaultButton(download_btn)
+            msg.exec()
+            if msg.clickedButton() == download_btn:
+                if download_url:
+                    webbrowser.open(download_url)
+                    self.status_label.setText("已打开下载页面")
+                else:
+                    self.status_label.setText(f"就绪 | {APP_NAME} v{APP_VERSION}")
+        else:
+            self.status_label.setText(f"就绪 | {APP_NAME} v{APP_VERSION} (已是最新)")
+            QMessageBox.information(self, "检查更新",
+                f"当前版本：v{APP_VERSION}\n已是最新版本，无需更新。")
 
     def closeEvent(self, event):
         self.settings.setValue("geometry", self.saveGeometry())
