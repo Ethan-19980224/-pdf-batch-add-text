@@ -381,8 +381,12 @@ class MainWindow(QMainWindow):
         hl.addStretch()
 
         ver = QLabel(f" v{APP_VERSION} ")
+        ver.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         ver.setStyleSheet("color:rgba(255,255,255,0.85);font-size:11px;padding:4px 14px;"
                          "background-color:rgba(255,255,255,0.15);border-radius:20px;border:none;")
+        ver.setToolTip("点击检测更新")
+        self.ver_label = ver
+        ver.mousePressEvent = lambda e: self._check_update_now()
         hl.addWidget(ver)
 
         main_layout.addWidget(header)
@@ -2275,30 +2279,28 @@ class MainWindow(QMainWindow):
     def _check_update_now(self):
         """点击版本号检测更新（后台线程检查，主线程弹窗）"""
         from PyQt6.QtCore import QTimer
-        from .utils.auto_update import check_for_update
-        import threading
 
+        # 更新顶部和底部两个版本号标签
+        self.ver_label.setText(" 检测中...")
         self.status_label.setText("正在检查更新...")
         self.status_label.setCursor(QCursor(Qt.CursorShape.WaitCursor))
 
+        import threading
+        from .utils.auto_update import check_for_update
+
         def _check():
-            """后台线程：只做 API 请求"""
-            try:
-                result = check_for_update()
-            except Exception:
-                result = {"has_update": False, "latest_version": APP_VERSION,
-                          "changelog": "", "download_url": "", "cached": False}
-            # 用 QTimer 切回主线程处理弹窗
+            result = check_for_update()
             QTimer.singleShot(0, lambda: self._on_update_result(result))
 
-        thread = threading.Thread(target=_check, daemon=True)
-        thread.start()
+        threading.Thread(target=_check, daemon=True).start()
 
     def _on_update_result(self, result):
         """主线程处理更新结果（安全弹窗）"""
         from PyQt6.QtWidgets import QMessageBox
         import webbrowser
 
+        # 恢复顶部和底部标签
+        self.ver_label.setText(f" v{APP_VERSION} ")
         self.status_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         has_update = result.get("has_update", False)
         latest_version = result.get("latest_version", "")
