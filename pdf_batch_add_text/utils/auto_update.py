@@ -89,7 +89,7 @@ def check_for_update() -> dict:
     try:
         import requests
         headers = {"Accept": "application/vnd.github.v3+json"}
-        resp = requests.get(RELEASES_URL, headers=headers, timeout=10)
+        resp = requests.get(RELEASES_URL, headers=headers, timeout=5)
 
         if resp.status_code == 200:
             data = resp.json()
