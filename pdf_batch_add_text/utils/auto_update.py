@@ -17,12 +17,9 @@ GITHUB_REPO = "-pdf-batch-add-text"
 RELEASES_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
 TAG_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/tags/v{APP_VERSION}"
 
-# 更新日志本地缓存路径
-VERSION_CACHE_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    ".checkpoints",
-    "version_cache.json"
-)
+# 更新日志本地缓存路径（用用户目录，exe 打包后也能持久保存）
+_CACHE_DIR = os.path.join(os.path.expanduser("~"), ".pdf_batch_add_text")
+VERSION_CACHE_PATH = os.path.join(_CACHE_DIR, "version_cache.json")
 
 
 def _version_tuple(version: str) -> tuple:
@@ -70,11 +67,11 @@ def check_for_update() -> dict:
     cached_at = cache.get("checked_at", "")
     latest = cache.get("latest_version", "")
 
-    # 24小时内使用缓存
+    # 7天内使用缓存（首次启动也会立即生效）
     if latest and cached_at:
         try:
             last_check = datetime.fromisoformat(cached_at)
-            if (datetime.now() - last_check).total_seconds() < 86400:
+            if (datetime.now() - last_check).total_seconds() < 604800:  # 7天
                 diag_log(f"[AutoUpdate] 使用缓存版本: {latest} (检查于 {cached_at})")
                 return {
                     "has_update": _version_tuple(latest) > _version_tuple(APP_VERSION),
@@ -89,7 +86,7 @@ def check_for_update() -> dict:
     try:
         import requests
         headers = {"Accept": "application/vnd.github.v3+json"}
-        resp = requests.get(RELEASES_URL, headers=headers, timeout=5)
+        resp = requests.get(RELEASES_URL, headers=headers, timeout=3)
 
         if resp.status_code == 200:
             data = resp.json()
