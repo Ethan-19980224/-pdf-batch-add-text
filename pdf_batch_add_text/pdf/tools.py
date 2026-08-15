@@ -1,7 +1,7 @@
 """PDF 辅助工具 - 页码、页脚、文本提取"""
 import os
 import re
-import fitz
+import pymupdf as fitz
 from datetime import datetime
 
 from ..config import (
@@ -60,7 +60,9 @@ def add_page_numbers(pdf_path, output_dir, start_num=1, font_size=10,
 
             page_num = start_num + idx
             text = f"— {page_num} —"
-            text_width = fitz.get_text_length(text, fontname=font_name, fontsize=font_size)
+            # get_text_length 不支持自定义字体名，使用内置字体测量宽度
+            measure_font = "helv" if font_name == CJK_FONT_RESOURCE_NAME else font_name
+            text_width = fitz.get_text_length(text, fontname=measure_font, fontsize=font_size)
 
             # 位置计算
             if position == "底部居中":
@@ -120,6 +122,8 @@ def add_footer(pdf_path, output_dir, footer_text, font_size=10,
         r = int(text_color[1:3], 16) / 255
         g = int(text_color[3:5], 16) / 255
         b = int(text_color[5:7], 16) / 255
+        # get_text_length 不支持自定义字体名，使用内置字体测量宽度
+        measure_font = "helv" if font_name == CJK_FONT_RESOURCE_NAME else font_name
 
         for idx in range(total_pages):
             page = doc[idx]
@@ -127,7 +131,7 @@ def add_footer(pdf_path, output_dir, footer_text, font_size=10,
             page_width = rect.width
             page_height = rect.height
 
-            text_width = fitz.get_text_length(footer_text, fontname=font_name, fontsize=font_size)
+            text_width = fitz.get_text_length(footer_text, fontname=measure_font, fontsize=font_size)
 
             if position == "底部居中":
                 x = (page_width - text_width) / 2
