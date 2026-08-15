@@ -1,6 +1,6 @@
 """PDF 辅助工具2 - 图片水印 / 页面旋转 / PDF加密"""
 import os
-import fitz
+import pymupdf as fitz
 from datetime import datetime
 
 from ..config import DEFAULT_OPACITY
@@ -91,7 +91,6 @@ def add_image_watermark(pdf_path, image_path, output_dir,
             output_path = os.path.join(output_dir, f"{base_name}_{counter}_图片水印.pdf")
             counter += 1
         doc.save(output_path)
-        doc.close()
         output_paths.append(output_path)
         diag_log(f"  图片水印完成: {output_path}")
         return output_paths
@@ -100,7 +99,10 @@ def add_image_watermark(pdf_path, image_path, output_dir,
         raise
     finally:
         if doc is not None:
-            doc.close()
+            try:
+                doc.close()
+            except Exception:
+                pass
 
 
 def rotate_pdf(pdf_path, output_dir, rotation, page_range=""):
@@ -139,16 +141,18 @@ def rotate_pdf(pdf_path, output_dir, rotation, page_range=""):
             output_path = os.path.join(output_dir, f"{base_name}_{counter}_旋转{rotation}.pdf")
             counter += 1
         doc.save(output_path)
-        doc.close()
-        output_paths.append(output_path)
         diag_log(f"  旋转完成: {output_path}")
+        output_paths.append(output_path)
         return output_paths
     except Exception as e:
         diag_log(f"  PDF旋转失败: {e}")
         raise
     finally:
         if doc is not None:
-            doc.close()
+            try:
+                doc.close()
+            except Exception:
+                pass
 
 
 def encrypt_pdf(pdf_path, output_dir, owner_pw, user_pw="",
@@ -195,14 +199,6 @@ def encrypt_pdf(pdf_path, output_dir, owner_pw, user_pw="",
         if permissions.get("can_notes"):
             p |= fitz.PDF_PERM_ANNOTATE
 
-        doc.save(
-            output_path := None,  # placeholder
-            encryption=fitz.PDF_ENCRYPT_AES_256,
-            owner_pw=owner_pw,
-            user_pw=user_pw,
-            permissions=p
-        )
-
         os.makedirs(output_dir, exist_ok=True)
         base_name = os.path.splitext(os.path.basename(pdf_path))[0]
         output_path = os.path.join(output_dir, f"{base_name}_加密.pdf")
@@ -218,7 +214,6 @@ def encrypt_pdf(pdf_path, output_dir, owner_pw, user_pw="",
             user_pw=user_pw,
             permissions=p
         )
-        doc.close()
         output_paths.append(output_path)
         diag_log(f"  PDF加密完成: {output_path} (用户密码: {'有' if user_pw else '无'}, 权限: {permissions})")
         return output_paths
@@ -227,7 +222,10 @@ def encrypt_pdf(pdf_path, output_dir, owner_pw, user_pw="",
         raise
     finally:
         if doc is not None:
-            doc.close()
+            try:
+                doc.close()
+            except Exception:
+                pass
 
 
 def _parse_range(range_str, total_pages):
