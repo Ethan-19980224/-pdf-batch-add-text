@@ -2,7 +2,7 @@
 import os
 import re
 import tempfile
-import fitz
+import pymupdf as fitz
 from datetime import date, datetime
 
 from ..config import POSITIONS, CJK_FONT_RESOURCE_NAME, _TEXT_ALIGN_LEFT, DEFAULT_OPACITY, FITZ_FONT_MAP, DEFAULT_FONT_SIZE
@@ -333,10 +333,11 @@ def _insert_text_on_page(self, page, text, r, g, b, px, py):
 
     # 智能自适应：如果文字超宽则自动缩小字号
     font_size = self.font_size
+    measure_font = "helv" if self._font_name == CJK_FONT_RESOURCE_NAME else self._font_name
     for attempt in range(3):
         try:
             text_width = fitz.get_text_length(
-                text, fontname=self._font_name, fontfile=self._font_file, fontsize=font_size
+                text, fontname=measure_font, fontfile=self._font_file, fontsize=font_size
             )
         except Exception:
             text_width = len(text) * font_size * (1.0 if self._font_file else 0.6)
