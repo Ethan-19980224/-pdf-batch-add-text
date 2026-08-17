@@ -11,7 +11,7 @@ import sys
 # =============================================================================
 
 try:
-    import fitz
+    import pymupdf as fitz
     FITZ_AVAILABLE = True
     try:
         _TEXT_ALIGN_LEFT = fitz.TEXT_ALIGN_LEFT
@@ -35,31 +35,51 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
 
 # =============================================================================
-# 配色方案 - 浅蓝素描主题 (柔和、低饱和、纸质质感)
+# 配色方案 - 高级现代感 (深色侧边栏 + 浅色内容区 + 微渐变)
 # =============================================================================
 
 COLORS = {
-    'bg': '#F2F5F9',
+    # 主背景
+    'bg': '#F5F6FA',
     'card': '#FFFFFF',
-    'primary': '#7BA7C9',
-    'primary_hover': '#6494B5',
-    'primary_light': '#E8F0F7',
-    'primary_ultra_light': '#F0F5FA',
-    'accent': '#8BB5A0',
-    'accent_hover': '#7AA38E',
-    'accent_light': '#EEF5F1',
-    'warning': '#C9A96E',
-    'warning_light': '#FAF5EC',
-    'danger': '#C4897F',
-    'danger_light': '#FBF1EF',
-    'text': '#3D4F5F',
-    'text_secondary': '#6B8299',
-    'text_muted': '#A0B3C4',
-    'border': '#D4DFE9',
-    'border_light': '#E8EFF5',
-    'header_bg': '#6B9ABD',
-    'header_bg_end': '#89B4D0',
-    'shadow': 'rgba(107, 154, 189, 0.05)',
+    'sidebar': '#1A1D2E',
+    'sidebar_hover': '#252840',
+    'sidebar_active': '#2D3154',
+
+    # 主色调 - 靛蓝紫
+    'primary': '#6366F1',
+    'primary_hover': '#4F46E5',
+    'primary_light': '#EEF0FF',
+    'primary_ultra_light': '#F8F9FF',
+
+    # 辅助色 - 翡翠绿
+    'accent': '#10B981',
+    'accent_hover': '#059669',
+    'accent_light': '#ECFDF5',
+
+    # 警告/危险
+    'warning': '#F59E0B',
+    'warning_light': '#FFFBEB',
+    'danger': '#EF4444',
+    'danger_light': '#FEF2F2',
+
+    # 文字
+    'text': '#1E293B',
+    'text_secondary': '#64748B',
+    'text_muted': '#94A3B8',
+    'text_light': '#CBD5E1',
+
+    # 边框
+    'border': '#E2E8F0',
+    'border_light': '#F1F5F9',
+
+    # 头部渐变
+    'header_bg': '#6366F1',
+    'header_bg_end': '#8B5CF6',
+
+    # 阴影
+    'shadow': 'rgba(99, 102, 241, 0.08)',
+    'shadow_dark': 'rgba(15, 23, 42, 0.12)',
 }
 
 APP_NAME = "PDF 批量添加文字"
