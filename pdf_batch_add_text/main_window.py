@@ -6,9 +6,11 @@ import tempfile
 import re
 import difflib
 import time
+import threading
+import webbrowser
 from datetime import datetime
 
-import fitz
+import pymupdf as fitz
 import openpyxl
 
 from PyQt6.QtWidgets import (
@@ -54,69 +56,47 @@ class MainWindow(QMainWindow):
     QMainWindow {{
         background-color: {COLORS['bg']};
     }}
-    /* 滚动条 */
+    QWidget {{
+        font-family: "Microsoft YaHei UI", "Segoe UI", "PingFang SC", sans-serif;
+    }}
     QScrollBar:vertical {{
-        background-color: transparent;
-        width: 6px;
-        margin: 0px;
+        background-color: transparent; width: 5px; margin: 0;
     }}
     QScrollBar::handle:vertical {{
-        background-color: {COLORS['border']};
-        border-radius: 3px;
-        min-height: 40px;
+        background-color: {COLORS['border']}; border-radius: 3px; min-height: 30px;
     }}
-    QScrollBar::handle:vertical:hover {{
-        background-color: {COLORS['text_muted']};
-    }}
-    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-        height: 0px;
-    }}
-    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
-        background: transparent;
-    }}
+    QScrollBar::handle:vertical:hover {{ background-color: {COLORS['text_muted']}; }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
     QScrollBar:horizontal {{
-        background-color: transparent;
-        height: 6px;
-        margin: 0px;
+        background-color: transparent; height: 5px; margin: 0;
     }}
     QScrollBar::handle:horizontal {{
-        background-color: {COLORS['border']};
-        border-radius: 3px;
-        min-width: 40px;
+        background-color: {COLORS['border']}; border-radius: 3px; min-width: 30px;
     }}
-    QScrollBar::handle:horizontal:hover {{
-        background-color: {COLORS['text_muted']};
-    }}
-    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
-        width: 0px;
-    }}
+    QScrollBar::handle:horizontal:hover {{ background-color: {COLORS['text_muted']}; }}
+    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
     """
 
-    # 卡片容器样式
     CARD_CSS = f"""
     background-color: {COLORS['card']};
     border: 1px solid {COLORS['border']};
-    border-radius: 14px;
+    border-radius: 16px;
     """
 
-    # 输入框通用样式
     INPUT_CSS = f"""
     QLineEdit {{
-        border: 1px solid {COLORS['border']};
-        border-radius: 8px;
-        padding: 10px 14px;
+        border: 1.5px solid {COLORS['border']};
+        border-radius: 10px;
+        padding: 10px 16px;
         background-color: white;
         color: {COLORS['text']};
         font-size: 13px;
         selection-background-color: {COLORS['primary_light']};
-        selection-color: {COLORS['text']};
     }}
-    QLineEdit:hover {{
-        border-color: {COLORS['primary']};
-    }}
+    QLineEdit:hover {{ border-color: {COLORS['primary']}; }}
     QLineEdit:focus {{
-        border: 1.5px solid {COLORS['primary']};
-        padding: 9px 13px;
+        border: 2px solid {COLORS['primary']};
+        padding: 9px 15px;
     }}
     QLineEdit[readOnly="true"] {{
         background-color: {COLORS['border_light']};
@@ -124,168 +104,123 @@ class MainWindow(QMainWindow):
     }}
     """
 
-    # 主要按钮样式
     PRIMARY_BTN_CSS = f"""
     QPushButton {{
-        background-color: {COLORS['primary']};
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 11px 26px;
-        font-weight: 600;
-        font-size: 14px;
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            stop:0 {COLORS['primary']}, stop:1 {COLORS['primary_hover']});
+        color: white; border: none; border-radius: 10px;
+        padding: 12px 28px; font-weight: 700; font-size: 14px;
     }}
     QPushButton:hover {{
-        background-color: {COLORS['primary_hover']};
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            stop:0 {COLORS['primary_hover']}, stop:1 #4338CA);
     }}
-    QPushButton:pressed {{
-        background-color: {COLORS['primary_hover']};
-    }}
-    QPushButton:disabled {{
-        background-color: {COLORS['border']};
-        color: {COLORS['text_muted']};
-    }}
+    QPushButton:pressed {{ background: #4338CA; }}
+    QPushButton:disabled {{ background: {COLORS['border']}; color: {COLORS['text_muted']}; }}
     """
 
-    # 次要按钮样式
     SECONDARY_BTN_CSS = f"""
     QPushButton {{
-        background-color: {COLORS['primary_light']};
-        color: {COLORS['primary']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 8px;
-        padding: 10px 18px;
-        font-weight: 600;
-        font-size: 13px;
+        background: {COLORS['primary_light']}; color: {COLORS['primary']};
+        border: 1.5px solid {COLORS['border']}; border-radius: 10px;
+        padding: 10px 20px; font-weight: 600; font-size: 13px;
     }}
     QPushButton:hover {{
-        background-color: {COLORS['primary']};
-        color: white;
-        border-color: {COLORS['primary']};
+        background: {COLORS['primary']}; color: white; border-color: {COLORS['primary']};
     }}
     """
 
-    # 成功按钮样式
     SUCCESS_BTN_CSS = f"""
     QPushButton {{
-        background-color: {COLORS['accent']};
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 14px 28px;
-        font-weight: 700;
-        font-size: 15px;
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            stop:0 {COLORS['accent']}, stop:1 {COLORS['accent_hover']});
+        color: white; border: none; border-radius: 12px;
+        padding: 14px 32px; font-weight: 700; font-size: 15px;
     }}
     QPushButton:hover {{
-        background-color: {COLORS['accent_hover']};
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            stop:0 {COLORS['accent_hover']}, stop:1 #047857);
     }}
-    QPushButton:disabled {{
-        background-color: {COLORS['border']};
-        color: {COLORS['text_muted']};
-    }}
+    QPushButton:disabled {{ background: {COLORS['border']}; color: {COLORS['text_muted']}; }}
     """
 
-    # 警告按钮样式
     WARNING_BTN_CSS = f"""
     QPushButton {{
-        background-color: {COLORS['warning_light']};
-        color: {COLORS['warning']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 8px;
-        padding: 10px 18px;
-        font-weight: 600;
-        font-size: 13px;
+        background: {COLORS['warning_light']}; color: {COLORS['warning']};
+        border: 1.5px solid {COLORS['border']}; border-radius: 10px;
+        padding: 10px 20px; font-weight: 600; font-size: 13px;
     }}
     QPushButton:hover {{
-        background-color: {COLORS['warning']};
-        color: white;
-        border-color: {COLORS['warning']};
+        background: {COLORS['warning']}; color: white; border-color: {COLORS['warning']};
     }}
     """
 
-    # 危险按钮样式
     DANGER_BTN_CSS = f"""
     QPushButton {{
-        background-color: {COLORS['danger_light']};
-        color: {COLORS['danger']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 8px;
-        padding: 9px 16px;
-        font-weight: 600;
-        font-size: 12px;
+        background: {COLORS['danger_light']}; color: {COLORS['danger']};
+        border: 1.5px solid {COLORS['border']}; border-radius: 10px;
+        padding: 9px 18px; font-weight: 600; font-size: 12px;
     }}
     QPushButton:hover {{
-        background-color: {COLORS['danger']};
-        color: white;
-        border-color: {COLORS['danger']};
+        background: {COLORS['danger']}; color: white; border-color: {COLORS['danger']};
     }}
     """
 
-    # 表格样式
     TABLE_CSS = f"""
     QTableWidget {{
-        border: none;
+        border: 1px solid {COLORS['border']}; border-radius: 12px;
         background-color: white;
         gridline-color: {COLORS['border_light']};
         font-size: 13px;
-        selection-background-color: {COLORS['primary']};
-        selection-color: white;
+        selection-background-color: {COLORS['primary_light']};
+        selection-color: {COLORS['text']};
         alternate-background-color: {COLORS['primary_ultra_light']};
     }}
     QTableWidget::item {{
-        padding: 6px 4px;
-        border-bottom: 1px solid {COLORS['border_light']};
+        padding: 6px 8px; border-bottom: 1px solid {COLORS['border_light']};
     }}
     QTableWidget::item:selected {{
-        background-color: {COLORS['primary']};
-        color: white;
+        background-color: {COLORS['primary_light']}; color: {COLORS['primary']};
+        font-weight: 600;
     }}
     QHeaderView::section {{
-        background-color: {COLORS['bg']};
-        padding: 10px 8px;
-        border: none;
-        border-bottom: 1.5px solid {COLORS['primary']};
-        font-weight: 600;
-        color: {COLORS['text_secondary']};
+        background-color: {COLORS['border_light']};
+        padding: 10px 8px; border: none;
+        border-bottom: 2px solid {COLORS['primary']};
+        font-weight: 700; color: {COLORS['text_secondary']};
         font-size: 12px;
     }}
     QLineEdit {{
-        padding: 4px;
-        border: 1px solid {COLORS['primary']};
-        border-radius: 2px;
-        background: white;
-        font-size: 13px;
+        padding: 4px; border: 1px solid {COLORS['primary']};
+        border-radius: 4px; background: white; font-size: 13px;
     }}
     """
 
-    # 日志区域样式
     LOG_CSS = f"""
     QPlainTextEdit {{
-        background-color: #2C3E50;
-        color: #B0C4D8;
-        font-family: 'Consolas', 'Monaco', monospace;
+        background-color: #1E1E2E;
+        color: #CDD6F4;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
         font-size: 12px;
-        border-radius: 8px;
-        padding: 14px;
+        border-radius: 12px;
+        padding: 16px;
         border: 1px solid {COLORS['border']};
+        selection-background-color: rgba(99, 102, 241, 0.3);
     }}
     """
 
-    # 进度条样式
     PROGRESS_CSS = f"""
     QProgressBar {{
-        border: none;
-        border-radius: 10px;
+        border: none; border-radius: 8px;
         text-align: center;
         background-color: {COLORS['border_light']};
         color: {COLORS['text_secondary']};
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 11px; font-weight: 600;
     }}
     QProgressBar::chunk {{
         background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-            stop:0 {COLORS['header_bg']}, stop:1 {COLORS['header_bg_end']});
-        border-radius: 10px;
+            stop:0 {COLORS['primary']}, stop:1 {COLORS['accent']});
+        border-radius: 8px;
     }}
     """
 
@@ -783,13 +718,13 @@ class MainWindow(QMainWindow):
         self.smart_btn.setStyleSheet(f"""
             QPushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #6366F1, stop:1 #8B5CF6);
+                    stop:0 {COLORS['primary']}, stop:1 #8B5CF6);
                 color: white; border: none; border-radius: 10px;
                 padding: 10px 18px; font-weight: 700; font-size: 14px;
             }}
             QPushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #4F46E5, stop:1 #7C3AED);
+                    stop:0 {COLORS['primary_hover']}, stop:1 #7C3AED);
             }}
             QPushButton:disabled {{
                 background-color: {COLORS['border']};
@@ -2242,10 +2177,6 @@ class MainWindow(QMainWindow):
 
     def _check_update_on_startup(self):
         """启动时在后台静默检查更新（安全：不弹窗，只更新状态栏）"""
-        from .utils.auto_update import check_for_update
-        import threading
-        from PyQt6.QtCore import QTimer
-
         def _check():
             try:
                 result = check_for_update()
@@ -2278,15 +2209,10 @@ class MainWindow(QMainWindow):
 
     def _check_update_now(self):
         """点击版本号检测更新（后台线程检查，主线程弹窗）"""
-        from PyQt6.QtCore import QTimer
-
         # 更新顶部和底部两个版本号标签
         self.ver_label.setText(" 检测中...")
         self.status_label.setText("正在检查更新...")
         self.status_label.setCursor(QCursor(Qt.CursorShape.WaitCursor))
-
-        import threading
-        from .utils.auto_update import check_for_update
 
         def _check():
             result = check_for_update()
@@ -2296,9 +2222,6 @@ class MainWindow(QMainWindow):
 
     def _on_update_result(self, result):
         """主线程处理更新结果（安全弹窗）"""
-        from PyQt6.QtWidgets import QMessageBox
-        import webbrowser
-
         # 恢复顶部和底部标签
         self.ver_label.setText(f" v{APP_VERSION} ")
         self.status_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
