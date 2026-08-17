@@ -35,51 +35,58 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
 
 # =============================================================================
-# 配色方案 - 高级现代感 (深色侧边栏 + 浅色内容区 + 微渐变)
+# 配色方案 - 深海蓝 + 金箔 (奢华高级感)
 # =============================================================================
 
 COLORS = {
     # 主背景
-    'bg': '#F5F6FA',
+    'bg': '#F5F0E8',
     'card': '#FFFFFF',
-    'sidebar': '#1A1D2E',
-    'sidebar_hover': '#252840',
-    'sidebar_active': '#2D3154',
+    'card_bg': '#F5F0E8',  # 卡片背景色
 
-    # 主色调 - 靛蓝紫
-    'primary': '#6366F1',
-    'primary_hover': '#4F46E5',
-    'primary_light': '#EEF0FF',
-    'primary_ultra_light': '#F8F9FF',
+    # 主色调 - 深海蓝
+    'primary': '#2D3A6E',
+    'primary_hover': '#1E2A4A',
+    'primary_light': '#E8EAF0',
+    'primary_ultra_light': '#F3F4F8',
+    'primary_dark': '#162040',
+
+    # 金箔点缀
+    'gold': '#D4A442',
+    'gold_light': '#E8C35A',
+    'gold_dark': '#B8892A',
+    'gold_bg': '#FEF8E8',
 
     # 辅助色 - 翡翠绿
-    'accent': '#10B981',
-    'accent_hover': '#059669',
-    'accent_light': '#ECFDF5',
+    'accent': '#2D9574',
+    'accent_hover': '#1E7A5E',
+    'accent_light': '#E8F5F0',
 
     # 警告/危险
-    'warning': '#F59E0B',
-    'warning_light': '#FFFBEB',
+    'warning': '#D4A442',
+    'warning_light': '#FEF8E8',
     'danger': '#EF4444',
     'danger_light': '#FEF2F2',
 
     # 文字
-    'text': '#1E293B',
-    'text_secondary': '#64748B',
-    'text_muted': '#94A3B8',
-    'text_light': '#CBD5E1',
+    'text': '#1E2A4A',
+    'text_secondary': '#9A8F80',
+    'text_muted': '#C4B8A8',
+    'text_light': '#EBE4D8',
 
     # 边框
-    'border': '#E2E8F0',
-    'border_light': '#F1F5F9',
+    'border': '#EBE4D8',
+    'border_light': '#F5F0E8',
 
     # 头部渐变
-    'header_bg': '#6366F1',
-    'header_bg_end': '#8B5CF6',
+    'header_bg': '#2D3A6E',
+    'header_bg_end': '#1E2A4A',
 
     # 阴影
-    'shadow': 'rgba(99, 102, 241, 0.08)',
-    'shadow_dark': 'rgba(15, 23, 42, 0.12)',
+    'shadow': 'rgba(30, 42, 74, 0.06)',
+    'shadow_medium': 'rgba(30, 42, 74, 0.12)',
+    'shadow_dark': 'rgba(22, 32, 64, 0.25)',
+    'shadow_deep': 'rgba(22, 32, 64, 0.35)',
 }
 
 APP_NAME = "PDF 批量添加文字"
